@@ -40,7 +40,7 @@ detect_domains() {
     print_step "Scanning /etc/hosts for local domains..."
 
     # Find all domains (excluding localhost, comments, and standard entries)
-    local domains=$(grep -v '^#' /etc/hosts 2>/dev/null | \
+    DETECTED_DOMAINS=$(grep -v '^#' /etc/hosts 2>/dev/null | \
                    grep -v '^$' | \
                    awk '{for(i=2;i<=NF;i++) print $i}' | \
                    grep -E '\.' | \
@@ -49,37 +49,38 @@ detect_domains() {
                    grep -v '^broadcasthost' | \
                    sort -u)
 
-    if [ -z "$domains" ]; then
+    if [ -z "$DETECTED_DOMAINS" ]; then
         echo "  No domains found in /etc/hosts"
         return 1
     fi
 
     # Analyze domain patterns
-    local dev_count=$(echo "$domains" | grep -c '\.dev$' 2>/dev/null || echo 0)
-    local local_dev_count=$(echo "$domains" | grep -c '\.local\.dev$' 2>/dev/null || echo 0)
-    local local_count=$(echo "$domains" | grep -c '\.local$' 2>/dev/null || echo 0)
+    local dev_count=$(echo "$DETECTED_DOMAINS" | grep -c '\.dev$' 2>/dev/null || echo 0)
+    local local_dev_count=$(echo "$DETECTED_DOMAINS" | grep -c '\.local\.dev$' 2>/dev/null || echo 0)
+    local local_count=$(echo "$DETECTED_DOMAINS" | grep -c '\.local$' 2>/dev/null || echo 0)
 
     echo "  Found domains:"
-    echo "$domains" | head -10 | sed 's/^/    • /'
+    echo "$DETECTED_DOMAINS" | head -10 | sed 's/^/    • /'
 
-    if [ $(echo "$domains" | wc -l) -gt 10 ]; then
-        echo "    ... and $(($(echo "$domains" | wc -l) - 10)) more"
+    local total_count=$(echo "$DETECTED_DOMAINS" | wc -l | xargs)
+    if [ "$total_count" -gt 10 ]; then
+        echo "    ... and $(($total_count - 10)) more"
     fi
     echo ""
 
     # Suggest pattern based on analysis
-    if [ $local_dev_count -gt 0 ]; then
+    if [ "$local_dev_count" -gt 0 ]; then
         SUGGESTED_DOMAIN_PATTERN="\.local\.dev"
         SUGGESTED_CERT_DOMAIN="*.local.dev"
-    elif [ $dev_count -gt 0 ]; then
+    elif [ "$dev_count" -gt 0 ]; then
         SUGGESTED_DOMAIN_PATTERN="\.dev"
         SUGGESTED_CERT_DOMAIN="*.dev"
-    elif [ $local_count -gt 0 ]; then
+    elif [ "$local_count" -gt 0 ]; then
         SUGGESTED_DOMAIN_PATTERN="\.(dev|local)"
         SUGGESTED_CERT_DOMAIN="*.dev *.local"
     else
         # Check first domain's TLD
-        local first_tld=$(echo "$domains" | head -1 | rev | cut -d'.' -f1 | rev)
+        local first_tld=$(echo "$DETECTED_DOMAINS" | head -1 | rev | cut -d'.' -f1 | rev)
         SUGGESTED_DOMAIN_PATTERN="\.$first_tld"
         SUGGESTED_CERT_DOMAIN="*.$first_tld"
     fi
@@ -126,7 +127,7 @@ print_header
 if detect_domains; then
     echo ""
     echo "Suggested domain pattern: ${GREEN}$SUGGESTED_DOMAIN_PATTERN${NC}"
-    echo "This will match domains like: ${YELLOW}$(echo "$domains" | head -3 | tr '\n' ' ')${NC}"
+    echo "This will match domains like: ${YELLOW}$(echo "$DETECTED_DOMAINS" | head -3 | tr '\n' ' ')${NC}"
     echo ""
     read -p "Use this pattern? (Y/n): " use_suggested
 
