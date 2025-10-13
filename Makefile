@@ -28,7 +28,7 @@ cleanup: ## Remove Tailscale DNS configuration (interactive)
 
 uninstall: cleanup ## Alias for cleanup
 
-test: ## Test DNS resolution
+test: ## Test DNS resolution locally
 	@echo "🧪 Testing DNS resolution..."
 	@TAILSCALE_CMD=""; \
 	if command -v tailscale &> /dev/null; then \
@@ -45,13 +45,17 @@ test: ## Test DNS resolution
 		echo "❌ Could not get Tailscale IP - is Tailscale connected?"; \
 		exit 1; \
 	fi; \
-	echo "Tailscale IP: $$TAILSCALE_IP"; \
+	echo "Your Tailscale IP: $$TAILSCALE_IP"; \
 	echo ""; \
-	echo "Testing DNS query..."; \
-	if dig @$$TAILSCALE_IP +short test.dev 2>/dev/null | head -1; then \
-		echo "✅ DNS is working!"; \
+	echo "💡 To properly test, use another device on your Tailscale network:"; \
+	echo "   ping api.dev"; \
+	echo "   curl http://api.dev"; \
+	echo ""; \
+	echo "Testing local dnsmasq service..."; \
+	if pgrep dnsmasq > /dev/null; then \
+		echo "✅ dnsmasq is running"; \
 	else \
-		echo "⚠️  No response - check if dnsmasq is running"; \
+		echo "❌ dnsmasq is not running - run 'make setup' first"; \
 	fi
 
 status: ## Show service status

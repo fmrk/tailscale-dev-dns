@@ -241,15 +241,56 @@ echo ""
 export SKIP_CERTS="$SKIP_CERTS"
 bash "$SCRIPT_DIR/setup-tailscale-dns.sh"
 
+# Get Tailscale IP for instructions
+TAILSCALE_CMD=""
+if command -v tailscale &> /dev/null; then
+    TAILSCALE_CMD="tailscale"
+elif [ -f "/Applications/Tailscale.app/Contents/MacOS/Tailscale" ]; then
+    TAILSCALE_CMD="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+fi
+
+TAILSCALE_IP=""
+if [ -n "$TAILSCALE_CMD" ]; then
+    TAILSCALE_IP=$($TAILSCALE_CMD ip -4 2>/dev/null | head -1)
+fi
+
 # Done
 echo ""
 print_header
 print_success "Interactive setup complete!"
 echo ""
-echo "Next steps:"
-echo "  1. Configure DNS in Tailscale admin console"
-echo "  2. Install rootCA.crt on your devices (if HTTPS enabled)"
-echo -e "  3. Test with: ${YELLOW}make test${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Next Steps:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Configuration saved in .env - you can edit it anytime."
+echo "1️⃣  Configure Tailscale DNS (Required)"
+echo ""
+echo -e "   Go to: ${YELLOW}https://login.tailscale.com/admin/dns${NC}"
+echo ""
+if [ -n "$TAILSCALE_IP" ]; then
+echo -e "   Add nameserver: ${GREEN}$TAILSCALE_IP${NC}"
+else
+echo -e "   Add nameserver: ${GREEN}[Your Tailscale IP]${NC}"
+fi
+echo -e "   Enable: ${YELLOW}Override local DNS${NC}"
+echo ""
+echo "2️⃣  Install HTTPS Certificate on Devices (Optional)"
+echo ""
+echo -e "   Certificate: ${GREEN}$CERT_EXPORT_DIR/rootCA.crt${NC}"
+echo "   Transfer via AirDrop, email, or USB"
+echo ""
+echo "   • macOS: Double-click → Keychain → Trust"
+echo "   • iOS: Install profile → Settings → Trust"
+echo "   • Android: Settings → Security → Install cert"
+echo ""
+echo "3️⃣  Test from Another Device"
+echo ""
+echo "   On your phone or another computer:"
+echo -e "   ${YELLOW}ping api.dev${NC}"
+echo -e "   ${YELLOW}curl http://api.dev${NC}"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Configuration saved in .env"
+echo -e "Check status: ${YELLOW}make status${NC}"
 echo ""
