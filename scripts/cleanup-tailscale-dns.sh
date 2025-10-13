@@ -28,16 +28,16 @@ echo ""
 print_warning "This script will remove the Tailscale DNS server setup"
 echo ""
 echo "What would you like to do?"
-echo "  1) Remove Tailscale DNS configuration only (keep dnsmasq & Tailscale)"
-echo "  2) Remove DNS config and stop dnsmasq (keep installed)"
-echo "  3) Remove DNS config and uninstall dnsmasq (keep Tailscale)"
-echo "  4) Remove everything (DNS, dnsmasq, and Tailscale)"
-echo "  5) Cancel"
+echo "  1) Remove configuration only (keep dnsmasq installed)"
+echo "  2) Remove all (configuration + uninstall dnsmasq + remove certs)"
+echo "  3) Cancel"
 echo ""
-read -p "Enter your choice (1-5): " -n 1 -r CHOICE
+echo -e "${YELLOW}Note:${NC} Tailscale is managed separately and won't be touched"
+echo ""
+read -p "Enter your choice (1-3): " -n 1 -r CHOICE
 echo ""
 
-if [ "$CHOICE" = "5" ]; then
+if [ "$CHOICE" = "3" ]; then
     echo "Cancelled."
     exit 0
 fi
@@ -136,97 +136,46 @@ if [ -f "/opt/homebrew/etc/dnsmasq.conf" ]; then
     fi
 fi
 
-# Remove dnsmasq-hosts if it exists
-if [ -f "/opt/homebrew/etc/dnsmasq-hosts" ]; then
-    print_info "Remove dnsmasq-hosts file? (y/n): "
-    read -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        rm /opt/homebrew/etc/dnsmasq-hosts
-        print_success "Removed dnsmasq-hosts"
-    fi
-fi
-
-# Options 2, 3, 4: Stop dnsmasq
-if [ "$CHOICE" = "2" ] || [ "$CHOICE" = "3" ] || [ "$CHOICE" = "4" ]; then
-    print_info "Stopping dnsmasq service..."
+# Option 2: Uninstall dnsmasq
+if [ "$CHOICE" = "2" ]; then
+    print_info "Stopping and uninstalling dnsmasq..."
     if brew services list | grep -q "dnsmasq.*started"; then
         sudo brew services stop dnsmasq
         print_success "dnsmasq service stopped"
-    else
-        print_info "dnsmasq service was not running"
     fi
-fi
 
-# Option 3, 4: Uninstall dnsmasq
-if [ "$CHOICE" = "3" ] || [ "$CHOICE" = "4" ]; then
-    print_info "Uninstalling dnsmasq..."
     if brew list dnsmasq &>/dev/null; then
         brew uninstall dnsmasq
         print_success "dnsmasq uninstalled"
-        
-        # Clean up any remaining files
+
+        # Clean up remaining files
+        if [ -f "/opt/homebrew/etc/dnsmasq-hosts" ]; then
+            rm /opt/homebrew/etc/dnsmasq-hosts
+            print_success "Removed dnsmasq-hosts"
+        fi
+
         if [ -d "/opt/homebrew/etc/dnsmasq.d" ]; then
-            print_info "Remove dnsmasq.d directory? (y/n): "
-            read -n 1 -r
-            echo ""
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                rm -rf /opt/homebrew/etc/dnsmasq.d
-                print_success "Removed dnsmasq.d directory"
-            fi
+            rm -rf /opt/homebrew/etc/dnsmasq.d
+            print_success "Removed dnsmasq.d directory"
         fi
     else
         print_info "dnsmasq was not installed"
     fi
 fi
 
-# Option 4: Uninstall Tailscale
-if [ "$CHOICE" = "4" ]; then
-    print_info "Uninstalling Tailscale..."
-    print_warning "This will disconnect you from your Tailscale network!"
-    echo "Are you sure? (y/n): "
-    read -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        # Logout from Tailscale
-        if command -v tailscale &> /dev/null; then
-            tailscale logout 2>/dev/null || true
-        fi
-        
-        # Quit Tailscale app
-        osascript -e 'quit app "Tailscale"' 2>/dev/null || true
-        
-        # Uninstall via brew
-        if brew list tailscale &>/dev/null; then
-            brew uninstall tailscale
-            print_success "Tailscale uninstalled via Homebrew"
-        fi
-        
-        # Remove Tailscale app if installed separately
-        if [ -d "/Applications/Tailscale.app" ]; then
-            rm -rf "/Applications/Tailscale.app"
-            print_success "Removed Tailscale.app"
-        fi
-        
-        # Clean up Tailscale preferences
-        rm -rf ~/Library/Preferences/com.tailscale.ipn.macos.plist 2>/dev/null || true
-        rm -rf ~/Library/Application\ Support/Tailscale/ 2>/dev/null || true
-        
-        print_success "Tailscale uninstalled"
-    else
-        print_info "Skipped Tailscale uninstallation"
+# Option 2: Remove certificates and mkcert
+if [ "$CHOICE" = "2" ]; then
+    print_info "Removing certificates..."
+    if [ -d "$REPO_DIR/certs" ]; then
+        rm -rf "$REPO_DIR/certs"
+        print_success "Removed certificates directory"
     fi
-fi
 
-# Reset DNS settings on current machine
-print_info "Reset DNS settings on this Mac? (y/n): "
-read -n 1 -r
-echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    # Reset to automatic DNS
-    sudo networksetup -setdnsservers Wi-Fi Empty 2>/dev/null || true
-    sudo networksetup -setdnsservers Ethernet Empty 2>/dev/null || true
-    print_success "DNS settings reset to automatic"
+    print_info "Uninstalling mkcert local CA..."
+    if command -v mkcert &> /dev/null; then
+        mkcert -uninstall
+        print_success "Uninstalled mkcert CA"
+    fi
 fi
 
 # Final summary
@@ -238,26 +187,20 @@ echo ""
 
 case "$CHOICE" in
     1)
-        print_success "Removed Tailscale DNS configuration"
-        echo "• dnsmasq is still installed and can be used"
-        echo "• Tailscale is still installed and connected"
+        print_success "Removed configuration only"
+        echo "• LaunchAgent removed"
+        echo "• Config files removed"
+        echo "• dnsmasq is still installed"
+        echo "• Tailscale is still installed"
+        echo ""
+        echo -e "To completely remove: ${YELLOW}make cleanup${NC} (choose option 2)"
         ;;
     2)
-        print_success "Removed DNS configuration and stopped dnsmasq"
-        echo "• dnsmasq is installed but not running"
-        echo -e "• To restart: ${YELLOW}sudo brew services start dnsmasq${NC}"
-        echo "• Tailscale is still installed and connected"
-        ;;
-    3)
-        print_success "Removed DNS configuration and uninstalled dnsmasq"
-        echo "• dnsmasq has been completely removed"
-        echo "• Tailscale is still installed and connected"
-        ;;
-    4)
-        print_success "Removed everything"
-        echo "• dnsmasq has been uninstalled"
-        echo "• Tailscale has been uninstalled"
-        echo "• DNS settings reset to automatic"
+        print_success "Removed everything except Tailscale"
+        echo "• Configuration removed"
+        echo "• dnsmasq uninstalled"
+        echo "• Certificates removed"
+        echo "• Tailscale is still installed"
         ;;
 esac
 
@@ -265,46 +208,8 @@ echo ""
 echo -e "📁 ${GREEN}Backup location:${NC}"
 echo "   $BACKUP_DIR"
 echo ""
-echo "To restore from backup:"
-echo -e "   ${YELLOW}cp $BACKUP_DIR/* /opt/homebrew/etc/${NC}"
-echo ""
 
 # Clean up temp files
 rm -f /tmp/dnsmasq-updater.err /tmp/dnsmasq-updater.out 2>/dev/null || true
-
-# Offer to remove proxy-certs directory if empty
-if [ "$CHOICE" = "4" ]; then
-    echo "Remove ~/proxy-certs directory? (y/n): "
-    read -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        # Keep backups directory
-        print_warning "Keeping backups directory. Remove manually if not needed:"
-        echo -e "   ${YELLOW}rm -rf ~/proxy-certs${NC}"
-    fi
-
-    echo ""
-    echo "Remove certificates directory (./certs)? (y/n): "
-    read -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-        if [ -d "$SCRIPT_DIR/certs" ]; then
-            rm -rf "$SCRIPT_DIR/certs"
-            print_success "Removed certificates directory"
-        fi
-    fi
-
-    echo ""
-    echo "Uninstall mkcert local CA? (y/n): "
-    read -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        if command -v mkcert &> /dev/null; then
-            mkcert -uninstall
-            print_success "Uninstalled mkcert CA"
-        fi
-    fi
-fi
 
 echo "============================================"
