@@ -227,7 +227,7 @@ case "$CHOICE" in
     2)
         print_success "Removed DNS configuration and stopped dnsmasq"
         echo "• dnsmasq is installed but not running"
-        echo "• To restart: ${YELLOW}sudo brew services start dnsmasq${NC}"
+        echo -e "• To restart: ${YELLOW}sudo brew services start dnsmasq${NC}"
         echo "• Tailscale is still installed and connected"
         ;;
     3)
@@ -244,11 +244,11 @@ case "$CHOICE" in
 esac
 
 echo ""
-echo "📁 ${GREEN}Backup location:${NC}"
+echo -e "📁 ${GREEN}Backup location:${NC}"
 echo "   $BACKUP_DIR"
 echo ""
 echo "To restore from backup:"
-echo "   ${YELLOW}cp $BACKUP_DIR/* /opt/homebrew/etc/${NC}"
+echo -e "   ${YELLOW}cp $BACKUP_DIR/* /opt/homebrew/etc/${NC}"
 echo ""
 
 # Clean up temp files
@@ -262,7 +262,7 @@ if [ "$CHOICE" = "4" ]; then
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         # Keep backups directory
         print_warning "Keeping backups directory. Remove manually if not needed:"
-        echo "   ${YELLOW}rm -rf ~/proxy-certs${NC}"
+        echo -e "   ${YELLOW}rm -rf ~/proxy-certs${NC}"
     fi
 
     echo ""
