@@ -18,7 +18,7 @@ NC='\033[0m'
 print_header() {
     clear
     echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║   Tailscale Dev DNS - Interactive Setup       ║${NC}"
+    echo -e "${BLUE}║  Tailscale Dev DNS - Interactive Setup        ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -249,7 +249,7 @@ echo ""
 echo "Next steps:"
 echo "  1. Configure DNS in Tailscale admin console"
 echo "  2. Install rootCA.crt on your devices (if HTTPS enabled)"
-echo "  3. Test with: ${YELLOW}make test${NC}"
+echo -e "  3. Test with: ${YELLOW}make test${NC}"
 echo ""
 echo "Configuration saved in .env - you can edit it anytime."
 echo ""
