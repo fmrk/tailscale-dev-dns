@@ -55,9 +55,14 @@ detect_domains() {
     fi
 
     # Analyze domain patterns
-    local dev_count=$(echo "$DETECTED_DOMAINS" | grep -c '\.dev$' 2>/dev/null || echo 0)
-    local local_dev_count=$(echo "$DETECTED_DOMAINS" | grep -c '\.local\.dev$' 2>/dev/null || echo 0)
-    local local_count=$(echo "$DETECTED_DOMAINS" | grep -c '\.local$' 2>/dev/null || echo 0)
+    local dev_count=$(echo "$DETECTED_DOMAINS" | grep -c '\.dev$' 2>/dev/null | head -1)
+    local local_dev_count=$(echo "$DETECTED_DOMAINS" | grep -c '\.local\.dev$' 2>/dev/null | head -1)
+    local local_count=$(echo "$DETECTED_DOMAINS" | grep -c '\.local$' 2>/dev/null | head -1)
+
+    # Ensure they're numbers
+    dev_count=${dev_count:-0}
+    local_dev_count=${local_dev_count:-0}
+    local_count=${local_count:-0}
 
     echo "  Found domains:"
     echo "$DETECTED_DOMAINS" | head -10 | sed 's/^/    • /'
@@ -126,8 +131,8 @@ read -p "Press Enter to continue..."
 print_header
 if detect_domains; then
     echo ""
-    echo "Suggested domain pattern: ${GREEN}$SUGGESTED_DOMAIN_PATTERN${NC}"
-    echo "This will match domains like: ${YELLOW}$(echo "$DETECTED_DOMAINS" | head -3 | tr '\n' ' ')${NC}"
+    echo -e "Suggested domain pattern: ${GREEN}$SUGGESTED_DOMAIN_PATTERN${NC}"
+    echo -e "This will match domains like: ${YELLOW}$(echo "$DETECTED_DOMAINS" | head -3 | tr '\n' ' ')${NC}"
     echo ""
     read -p "Use this pattern? (Y/n): " use_suggested
 
@@ -146,7 +151,7 @@ if detect_domains; then
     fi
 else
     echo ""
-    echo "Using default pattern: ${GREEN}\.dev${NC}"
+    echo -e "Using default pattern: ${GREEN}\.dev${NC}"
     echo ""
     read -p "Change it? (y/N): " change_default
 
@@ -166,7 +171,7 @@ print_step "Configuring source IPs..."
 detect_ips
 
 echo ""
-echo "Suggested IP pattern: ${GREEN}$SUGGESTED_IP_PATTERN${NC}"
+echo -e "Suggested IP pattern: ${GREEN}$SUGGESTED_IP_PATTERN${NC}"
 echo "This will match /etc/hosts entries from these IPs"
 echo ""
 read -p "Use this pattern? (Y/n): " use_ip_suggested
@@ -201,11 +206,11 @@ fi
 print_header
 print_step "Configuration Summary"
 
-echo "Domain Pattern:     ${GREEN}$DOMAIN_PATTERN${NC}"
-echo "IP Pattern:         ${GREEN}$HOST_IP_PATTERN${NC}"
-echo "Certificate Domains: ${GREEN}$CERT_DOMAINS${NC}"
-echo "Generate Certs:     ${GREEN}$([ "$SKIP_CERTS" = "false" ] && echo "Yes" || echo "No")${NC}"
-echo "Cert Location:      ${GREEN}./certs/${NC}"
+echo -e "Domain Pattern:     ${GREEN}$DOMAIN_PATTERN${NC}"
+echo -e "IP Pattern:         ${GREEN}$HOST_IP_PATTERN${NC}"
+echo -e "Certificate Domains: ${GREEN}$CERT_DOMAINS${NC}"
+echo -e "Generate Certs:     ${GREEN}$([ "$SKIP_CERTS" = "false" ] && echo "Yes" || echo "No")${NC}"
+echo -e "Cert Location:      ${GREEN}./certs/${NC}"
 echo ""
 read -p "Proceed with installation? (Y/n): " confirm
 
