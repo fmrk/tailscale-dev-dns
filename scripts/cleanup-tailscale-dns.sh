@@ -243,6 +243,29 @@ if [ "$CHOICE" = "4" ]; then
         print_warning "Keeping backups directory. Remove manually if not needed:"
         echo "   ${YELLOW}rm -rf ~/proxy-certs${NC}"
     fi
+
+    echo ""
+    echo "Remove certificates directory (./certs)? (y/n): "
+    read -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+        if [ -d "$SCRIPT_DIR/certs" ]; then
+            rm -rf "$SCRIPT_DIR/certs"
+            print_success "Removed certificates directory"
+        fi
+    fi
+
+    echo ""
+    echo "Uninstall mkcert local CA? (y/n): "
+    read -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if command -v mkcert &> /dev/null; then
+            mkcert -uninstall
+            print_success "Uninstalled mkcert CA"
+        fi
+    fi
 fi
 
 echo "============================================"

@@ -2,6 +2,35 @@
 
 Access your local development domains (e.g., `*.local.dev`) from any device, anywhere in the world using Tailscale VPN + DNS.
 
+## ✨ Features
+
+- 🌐 **Access local dev domains from anywhere** - Works over cellular, coffee shop WiFi, anywhere
+- 🔒 **Automatic HTTPS certificates** - mkcert generates trusted certs, no browser warnings
+- 🔄 **Auto-sync** - Changes to `/etc/hosts` automatically propagate to all devices
+- ⚙️ **Configurable** - Regex patterns for domains and IPs via `.env` file
+- 📱 **Multi-device** - iPhone, iPad, Android, Mac, Windows - one setup works everywhere
+- 🚀 **One-command setup** - `make setup` does everything
+- 🔐 **Private & secure** - Encrypted via Tailscale, only accessible to your devices
+- 🎯 **Zero client config** - Set DNS once in Tailscale admin, forget about it
+
+## Quick Usage
+
+```bash
+# Setup everything
+make setup
+
+# Check status
+make status
+
+# Test DNS
+make test
+
+# Cleanup
+make cleanup
+```
+
+See all available commands: `make help`
+
 ## Files
 
 ### ⚙️ `.env` (optional)
@@ -15,58 +44,66 @@ cp .env.example .env
 **Configuration options:**
 - `DOMAIN_PATTERN` - Regex to match domains (default: `\.dev`)
 - `HOST_IP_PATTERN` - Regex to match source IPs in /etc/hosts (default: `^(127\.0\.0\.1|10\.0\.0\.1)`)
+- `CERT_DOMAINS` - Domains for certificate generation (default: `*.dev localhost 127.0.0.1`)
+- `CERT_EXPORT_DIR` - Where to store certificates (default: `./certs`)
 
 See [.env.example](.env.example) for more details.
 
-### 📜 `setup-tailscale-dns.sh`
-**Main setup script** - Sets up your Mac as a DNS server for your Tailscale network.
+### 📜 `Makefile`
+**Easy command interface** - Simplifies setup and management.
 
-**What it does:**
+**Available commands:**
+- `make setup` - Full installation and configuration
+- `make cleanup` - Remove configuration (interactive)
+- `make status` - Show service status
+- `make test` - Test DNS resolution
+- `make restart-dns` - Restart dnsmasq service
+- `make config` - Show current configuration
+- `make share-cert` - Open certs folder for sharing
+- `make help` - Show all available commands
+
+### 📂 `scripts/`
+Contains the core bash scripts:
+- `setup-tailscale-dns.sh` - Main setup script
+- `cleanup-tailscale-dns.sh` - Cleanup script with multiple removal options
+
+**What the setup does:**
 - Installs and configures Tailscale (if needed)
 - Installs and configures dnsmasq as DNS server
+- **Automatically generates HTTPS certificates with mkcert**
 - Makes all your `/etc/hosts` entries accessible via Tailscale
 - Auto-syncs changes to `/etc/hosts`
 - Configures your Mac to serve DNS on your Tailscale IP
-
-**Usage:**
-```bash
-./setup-tailscale-dns.sh
-```
-
-**After setup:**
-- Your iPhone/iPad can access your local dev domains from anywhere
-- Other devices can join your tailnet and access local dev domains
-- Works over cellular, coffee shop WiFi, etc.
-
-### 🧹 `cleanup-tailscale-dns.sh`
-**Cleanup script** - Removes the Tailscale DNS configuration (with options).
-
-**Cleanup levels:**
-1. Remove DNS config only (keep Tailscale & dnsmasq)
-2. Remove config + stop dnsmasq
-3. Remove config + uninstall dnsmasq
-4. Remove everything (full cleanup)
-
-**Usage:**
-```bash
-./cleanup-tailscale-dns.sh
-```
-
-**Features:**
-- Interactive prompts
-- Creates backups before removal
-- Shows restoration instructions
+- Exports CA certificate for easy device installation
 
 ## HTTPS Support
 
-For full HTTPS support (accessing `https://yourapp.local.dev` without certificate warnings):
+The setup script automatically generates HTTPS certificates using **mkcert** for your configured domains (default: `*.dev`).
 
-- **Install your local development CA certificate** on each device
-- **Certificate location**: Usually in your local dev environment setup (e.g., `~/proxy-certs/`)
-- **Transfer method**: AirDrop, email, or file sharing to other devices
-- **Installation**: Follow your device's certificate installation process
+### Automatic Certificate Generation
+- Wildcard certificates are created based on your `.env` configuration
+- CA certificate is exported to `./certs/rootCA.crt` (in the repo folder)
+- Works with any domain pattern you specify
 
-Without the certificate, you can still access sites via HTTP or accept certificate warnings.
+### Installing Certificates on Devices
+
+**macOS:**
+1. AirDrop `./certs/rootCA.crt` to your other Mac
+2. Double-click the file to open Keychain Access
+3. Find "mkcert" certificate and set to "Always Trust"
+
+**iOS/iPadOS:**
+1. AirDrop `./certs/rootCA.crt` to your device
+2. Settings → Profile Downloaded → Install
+3. Settings → General → About → Certificate Trust Settings
+4. Enable full trust for "mkcert" root certificate
+
+**Android:**
+1. Transfer `./certs/rootCA.crt` to your device
+2. Settings → Security → Install from storage
+3. Select the certificate file
+
+Once installed, HTTPS will work without warnings on all your local domains!
 
 ## Quick Start
 
@@ -79,7 +116,12 @@ cp .env.example .env
 
 ### 2. Setup DNS Server on Mac
 ```bash
-./setup-tailscale-dns.sh
+make setup
+```
+
+Or run the script directly:
+```bash
+./scripts/setup-tailscale-dns.sh
 ```
 
 ### 3. Configure DNS for All Devices (One-time setup)
@@ -134,14 +176,29 @@ open http://yourapp.local.dev
 ## How It Works
 
 1. **Tailscale** creates a private network between your devices
-2. **dnsmasq** on your Mac serves DNS for .dev domains  
-3. **Automatic sync** keeps DNS updated when you change /etc/hosts
-4. **Certificate** enables HTTPS access without warnings
+2. **dnsmasq** on your Mac serves DNS for your configured domains
+3. **mkcert** generates trusted HTTPS certificates
+4. **Automatic sync** keeps DNS updated when you change /etc/hosts
+5. **LaunchAgent** watches for changes and restarts dnsmasq
+
+## Make Commands Reference
+
+```bash
+make setup         # Full installation
+make cleanup       # Remove configuration
+make status        # Show service status
+make test          # Test DNS resolution
+make restart-dns   # Restart dnsmasq
+make config        # Show current config
+make share-cert    # Open certs folder
+make help          # Show all commands
+```
 
 ## Benefits vs LAN-only Setup
 
 - ✅ Works from anywhere (not just home WiFi)
 - ✅ Encrypted connection via Tailscale
+- ✅ Automatic HTTPS certificate generation
 - ✅ No manual IP configuration needed
 - ✅ Automatic updates when /etc/hosts changes
 - ✅ Centralized DNS management
@@ -161,6 +218,7 @@ dig @$(tailscale ip -4) yourapp.local.dev
 ```
 
 **Certificate errors:**
-- Ensure your local CA certificate is installed AND trusted
-- Check Certificate Trust Settings on iOS (Settings > General > About > Certificate Trust Settings)
-- Verify certificate is in System keychain on Mac
+- Ensure `./certs/rootCA.crt` is installed AND trusted on your device
+- On iOS: Check Certificate Trust Settings (Settings > General > About > Certificate Trust Settings)
+- On Mac: Verify "mkcert" certificate is set to "Always Trust" in Keychain Access
+- Regenerate certificates: Delete `./certs` folder and run setup script again

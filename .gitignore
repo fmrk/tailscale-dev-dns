@@ -1,2 +1,5 @@
 # Environment configuration
 .env
+
+# Generated certificates
+certs/

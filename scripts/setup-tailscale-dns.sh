@@ -11,9 +11,14 @@ if [ -f "$(dirname "$0")/.env" ]; then
     export $(grep -v '^#' "$(dirname "$0")/.env" | xargs)
 fi
 
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Configuration with defaults
 DOMAIN_PATTERN="${DOMAIN_PATTERN:-\.dev}"
 HOST_IP_PATTERN="${HOST_IP_PATTERN:-^(127\.0\.0\.1|10\.0\.0\.1)}"
+CERT_DOMAINS="${CERT_DOMAINS:-*.dev localhost 127.0.0.1}"
+CERT_EXPORT_DIR="${CERT_EXPORT_DIR:-$SCRIPT_DIR/certs}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -27,6 +32,20 @@ print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Validate regex patterns
+print_info "Validating configuration..."
+if ! echo "test.dev" | grep -qE "$DOMAIN_PATTERN" 2>/dev/null && \
+   ! echo "app.local.dev" | grep -qE "$DOMAIN_PATTERN" 2>/dev/null; then
+    print_warning "DOMAIN_PATTERN may not match any domains: $DOMAIN_PATTERN"
+    echo "Common patterns: \.dev | \.(dev|local) | \.local\.dev"
+fi
+
+if ! echo "127.0.0.1" | grep -qE "$HOST_IP_PATTERN" 2>/dev/null && \
+   ! echo "10.0.0.1" | grep -qE "$HOST_IP_PATTERN" 2>/dev/null; then
+    print_warning "HOST_IP_PATTERN may not match typical IPs: $HOST_IP_PATTERN"
+    echo "Common patterns: ^127\.0\.0\.1 | ^(127\.0\.0\.1|10\.0\.0\.1)"
+fi
 
 # Header
 clear
@@ -86,6 +105,52 @@ if [ -z "$TAILSCALE_IP" ]; then
 fi
 
 print_success "Your Tailscale IP: $TAILSCALE_IP"
+
+# Setup HTTPS certificates with mkcert
+echo ""
+print_info "Setting up HTTPS certificates with mkcert..."
+
+# Check if mkcert is installed
+if ! command -v mkcert &> /dev/null; then
+    print_info "Installing mkcert..."
+    brew install mkcert nss
+    print_success "mkcert installed"
+else
+    print_info "mkcert is already installed"
+fi
+
+# Install local CA
+print_info "Installing local Certificate Authority..."
+mkcert -install
+
+# Create certificate export directory
+mkdir -p "$CERT_EXPORT_DIR"
+
+# Generate wildcard certificate
+print_info "Generating certificates for: $CERT_DOMAINS"
+cd "$CERT_EXPORT_DIR"
+mkcert $CERT_DOMAINS
+
+# Find the generated cert and key files
+CERT_FILE=$(ls -t "$CERT_EXPORT_DIR"/*+*.pem 2>/dev/null | head -1)
+KEY_FILE=$(ls -t "$CERT_EXPORT_DIR"/*+*-key.pem 2>/dev/null | head -1)
+
+if [ -n "$CERT_FILE" ] && [ -n "$KEY_FILE" ]; then
+    # Create symlinks with predictable names
+    ln -sf "$(basename "$CERT_FILE")" "$CERT_EXPORT_DIR/cert.pem"
+    ln -sf "$(basename "$KEY_FILE")" "$CERT_EXPORT_DIR/key.pem"
+    print_success "Certificates generated in: $CERT_EXPORT_DIR"
+else
+    print_warning "Certificate generation may have failed, check $CERT_EXPORT_DIR"
+fi
+
+# Export CA certificate for other devices
+CAROOT=$(mkcert -CAROOT)
+cp "$CAROOT/rootCA.pem" "$CERT_EXPORT_DIR/rootCA.pem"
+cp "$CAROOT/rootCA.pem" "$CERT_EXPORT_DIR/rootCA.crt"
+print_success "CA certificate exported to: $CERT_EXPORT_DIR/rootCA.crt"
+
+cd - > /dev/null
 
 # Get all local network IPs
 print_info "Detecting all network interfaces..."
@@ -314,6 +379,16 @@ echo "📁 ${GREEN}Important files:${NC}"
 echo "   Config: /opt/homebrew/etc/dnsmasq.conf"
 echo "   Hosts: /opt/homebrew/etc/dnsmasq-tailscale-hosts"
 echo "   Updater: /opt/homebrew/etc/update-dnsmasq-hosts.sh"
+echo "   Certificates: $CERT_EXPORT_DIR"
+echo ""
+echo "🔒 ${GREEN}HTTPS Setup (One-time per device):${NC}"
+echo "   1. Transfer $CERT_EXPORT_DIR/rootCA.crt to your device"
+echo "      • Mac: AirDrop, then double-click to install in Keychain"
+echo "      • iOS: AirDrop → Settings → Profile Downloaded → Install"
+echo "             Then: Settings → General → About → Certificate Trust Settings → Enable"
+echo "      • Android: Settings → Security → Install from storage"
+echo ""
+echo "   2. Once installed, HTTPS will work without warnings!"
 echo ""
 echo "🔄 ${GREEN}Automatic updates:${NC}"
 echo "   Changes to /etc/hosts are automatically synced"
