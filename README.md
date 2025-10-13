@@ -16,11 +16,11 @@ Access your local development domains (e.g., `*.local.dev`) from any device, any
 ## Quick Usage
 
 ```bash
-# Interactive setup (recommended for first time)
-make setup-interactive
-
-# Or non-interactive setup
+# Smart setup (interactive first time, then uses saved config)
 make setup
+
+# Or force interactive setup
+make setup-interactive
 
 # Check status
 make status
@@ -31,6 +31,8 @@ make test
 # Cleanup
 make cleanup
 ```
+
+**Aliases:** `make install` or `make start` (same as `make setup`)
 
 See all available commands: `make help`
 
@@ -56,8 +58,9 @@ See [.env.example](.env.example) for more details.
 **Easy command interface** - Simplifies setup and management.
 
 **Available commands:**
-- `make setup-interactive` - **Interactive wizard with auto-detection** (recommended)
-- `make setup` - Non-interactive installation (uses .env or defaults)
+- `make setup` - **Smart setup** (interactive first time, then uses .env)
+- `make setup-interactive` - Force interactive wizard with auto-detection
+- `make start` / `make install` - Aliases for `make setup`
 - `make cleanup` - Remove configuration (interactive)
 - `make status` - Show service status
 - `make test` - Test DNS resolution
@@ -112,11 +115,15 @@ Once installed, HTTPS will work without warnings on all your local domains!
 
 ## Quick Start
 
-### Option A: Interactive Setup (Recommended)
+### Just run setup!
 
 ```bash
-make setup-interactive
+make setup
 ```
+
+**What happens:**
+- 🆕 **First time?** → Interactive wizard with auto-detection
+- 🔄 **Already configured?** → Uses your saved `.env` settings
 
 The wizard will:
 - 🔍 Auto-detect domains from your `/etc/hosts`
@@ -124,20 +131,16 @@ The wizard will:
 - ❓ Ask simple yes/no questions
 - ✨ Configure everything automatically
 
-### Option B: Manual Configuration
-
+**Force reconfiguration:**
 ```bash
-# 1. Copy example config and customize
-cp .env.example .env
-# Edit .env to match your domain patterns
-
-# 2. Run setup
-make setup
+make setup-interactive
 ```
 
-Or run the script directly:
+**Manual configuration (advanced):**
 ```bash
-./scripts/setup-tailscale-dns.sh
+cp .env.example .env
+# Edit .env, then:
+make setup
 ```
 
 ### 3. Configure DNS for All Devices (One-time setup)
@@ -200,8 +203,9 @@ open http://yourapp.local.dev
 ## Make Commands Reference
 
 ```bash
-make setup-interactive  # Interactive wizard (recommended)
-make setup             # Non-interactive installation
+make setup             # Smart setup (interactive first time, then uses .env)
+make start / install   # Aliases for setup
+make setup-interactive # Force interactive wizard
 make cleanup           # Remove configuration
 make status            # Show service status
 make test              # Test DNS resolution

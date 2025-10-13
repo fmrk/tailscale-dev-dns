@@ -1,4 +1,4 @@
-.PHONY: help setup setup-interactive cleanup install uninstall test status restart-dns logs config share-cert
+.PHONY: help setup setup-interactive start cleanup install uninstall test status restart-dns logs config share-cert
 
 # Default target
 .DEFAULT_GOAL := help
@@ -13,14 +13,22 @@ help: ## Show this help message
 	@echo ""
 	@echo "💡 First time? Try: make setup-interactive"
 
-setup-interactive: ## Interactive setup with auto-detection (recommended for first use)
+setup-interactive: ## Interactive setup with auto-detection (guided wizard)
 	@bash scripts/setup-interactive.sh
 
-setup: ## Setup Tailscale DNS server (non-interactive, uses .env or defaults)
-	@echo "🚀 Setting up Tailscale DNS server..."
-	@bash scripts/setup-tailscale-dns.sh
+setup: ## Smart setup - interactive if no .env, else uses existing config
+	@if [ ! -f .env ]; then \
+		echo "💡 No .env found - running interactive setup..."; \
+		echo ""; \
+		bash scripts/setup-interactive.sh; \
+	else \
+		echo "🚀 Using existing .env configuration..."; \
+		bash scripts/setup-tailscale-dns.sh; \
+	fi
 
-install: setup-interactive ## Alias for setup-interactive
+install: setup ## Alias for setup (smart mode)
+
+start: setup ## Alias for setup (smart mode)
 
 cleanup: ## Remove Tailscale DNS configuration (interactive)
 	@echo "🧹 Running cleanup..."
