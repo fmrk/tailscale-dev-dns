@@ -30,32 +30,44 @@ uninstall: cleanup ## Alias for cleanup
 
 test: ## Test DNS resolution
 	@echo "🧪 Testing DNS resolution..."
-	@if command -v tailscale &> /dev/null; then \
-		TAILSCALE_IP=$$(tailscale ip -4 2>/dev/null | head -1); \
-		if [ -n "$$TAILSCALE_IP" ]; then \
-			echo "Tailscale IP: $$TAILSCALE_IP"; \
-			echo ""; \
-			echo "Testing DNS query..."; \
-			if dig @$$TAILSCALE_IP +short test.dev 2>/dev/null | head -1; then \
-				echo "✅ DNS is working!"; \
-			else \
-				echo "⚠️  No response - check if dnsmasq is running"; \
-			fi; \
-		else \
-			echo "❌ Could not get Tailscale IP - is Tailscale connected?"; \
-		fi; \
-	else \
+	@TAILSCALE_CMD=""; \
+	if command -v tailscale &> /dev/null; then \
+		TAILSCALE_CMD="tailscale"; \
+	elif [ -f "/Applications/Tailscale.app/Contents/MacOS/Tailscale" ]; then \
+		TAILSCALE_CMD="/Applications/Tailscale.app/Contents/MacOS/Tailscale"; \
+	fi; \
+	if [ -z "$$TAILSCALE_CMD" ]; then \
 		echo "❌ Tailscale not found"; \
+		exit 1; \
+	fi; \
+	TAILSCALE_IP=$$($$TAILSCALE_CMD ip -4 2>/dev/null | head -1); \
+	if [ -z "$$TAILSCALE_IP" ]; then \
+		echo "❌ Could not get Tailscale IP - is Tailscale connected?"; \
+		exit 1; \
+	fi; \
+	echo "Tailscale IP: $$TAILSCALE_IP"; \
+	echo ""; \
+	echo "Testing DNS query..."; \
+	if dig @$$TAILSCALE_IP +short test.dev 2>/dev/null | head -1; then \
+		echo "✅ DNS is working!"; \
+	else \
+		echo "⚠️  No response - check if dnsmasq is running"; \
 	fi
 
 status: ## Show service status
 	@echo "📊 Service Status"
 	@echo ""
 	@echo "Tailscale:"
-	@if command -v tailscale &> /dev/null; then \
-		tailscale status 2>/dev/null || echo "  Not connected"; \
-	else \
+	@TAILSCALE_CMD=""; \
+	if command -v tailscale &> /dev/null; then \
+		TAILSCALE_CMD="tailscale"; \
+	elif [ -f "/Applications/Tailscale.app/Contents/MacOS/Tailscale" ]; then \
+		TAILSCALE_CMD="/Applications/Tailscale.app/Contents/MacOS/Tailscale"; \
+	fi; \
+	if [ -z "$$TAILSCALE_CMD" ]; then \
 		echo "  Not installed"; \
+	else \
+		$$TAILSCALE_CMD status 2>/dev/null || echo "  Not connected"; \
 	fi
 	@echo ""
 	@echo "dnsmasq:"

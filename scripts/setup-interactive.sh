@@ -18,7 +18,7 @@ NC='\033[0m'
 print_header() {
     clear
     echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║  Tailscale Dev DNS - Interactive Setup        ║${NC}"
+    echo -e "${BLUE}║  Tailscale Dev DNS - Interactive Setup         ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
     echo ""
 }
