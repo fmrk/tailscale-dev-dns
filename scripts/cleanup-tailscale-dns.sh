@@ -47,11 +47,22 @@ BACKUP_DIR="$HOME/proxy-certs/backups/cleanup_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 print_info "Creating backup in $BACKUP_DIR..."
 
+# Get script directory to find config folder
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+CONFIG_DIR="$REPO_DIR/config"
+
 # Backup configurations if they exist
 if [ -f "/opt/homebrew/etc/dnsmasq.conf" ]; then
     cp /opt/homebrew/etc/dnsmasq.conf "$BACKUP_DIR/" 2>/dev/null || true
 fi
 
+# Backup project config folder
+if [ -d "$CONFIG_DIR" ]; then
+    cp -r "$CONFIG_DIR" "$BACKUP_DIR/" 2>/dev/null || true
+fi
+
+# Backup old system files (for backwards compatibility)
 if [ -f "/opt/homebrew/etc/dnsmasq-tailscale-hosts" ]; then
     cp /opt/homebrew/etc/dnsmasq-tailscale-hosts "$BACKUP_DIR/" 2>/dev/null || true
 fi
@@ -74,16 +85,26 @@ else
     print_info "Automatic hosts updater not found"
 fi
 
-# Remove update script
-if [ -f "/opt/homebrew/etc/update-dnsmasq-hosts.sh" ]; then
-    rm /opt/homebrew/etc/update-dnsmasq-hosts.sh
-    print_success "Removed update script"
+# Remove project config folder
+if [ -d "$CONFIG_DIR" ]; then
+    rm -rf "$CONFIG_DIR"
+    print_success "Removed project config folder"
 fi
 
-# Remove Tailscale hosts file
+# Remove old system files (backwards compatibility)
+if [ -f "/opt/homebrew/etc/update-dnsmasq-hosts.sh" ]; then
+    rm /opt/homebrew/etc/update-dnsmasq-hosts.sh
+    print_success "Removed old update script"
+fi
+
 if [ -f "/opt/homebrew/etc/dnsmasq-tailscale-hosts" ]; then
     rm /opt/homebrew/etc/dnsmasq-tailscale-hosts
-    print_success "Removed dnsmasq-tailscale-hosts"
+    print_success "Removed old hosts file"
+fi
+
+if [ -f "/opt/homebrew/etc/dnsmasq-tailscale.conf" ]; then
+    rm /opt/homebrew/etc/dnsmasq-tailscale.conf
+    print_success "Removed old config file"
 fi
 
 # Step 2: Clean dnsmasq configuration (all options)

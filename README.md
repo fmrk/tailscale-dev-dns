@@ -16,7 +16,10 @@ Access your local development domains (e.g., `*.local.dev`) from any device, any
 ## Quick Usage
 
 ```bash
-# Setup everything
+# Interactive setup (recommended for first time)
+make setup-interactive
+
+# Or non-interactive setup
 make setup
 
 # Check status
@@ -53,7 +56,8 @@ See [.env.example](.env.example) for more details.
 **Easy command interface** - Simplifies setup and management.
 
 **Available commands:**
-- `make setup` - Full installation and configuration
+- `make setup-interactive` - **Interactive wizard with auto-detection** (recommended)
+- `make setup` - Non-interactive installation (uses .env or defaults)
 - `make cleanup` - Remove configuration (interactive)
 - `make status` - Show service status
 - `make test` - Test DNS resolution
@@ -64,7 +68,8 @@ See [.env.example](.env.example) for more details.
 
 ### 📂 `scripts/`
 Contains the core bash scripts:
-- `setup-tailscale-dns.sh` - Main setup script
+- `setup-interactive.sh` - Interactive setup wizard with auto-detection
+- `setup-tailscale-dns.sh` - Main setup script (non-interactive)
 - `cleanup-tailscale-dns.sh` - Cleanup script with multiple removal options
 
 **What the setup does:**
@@ -107,15 +112,26 @@ Once installed, HTTPS will work without warnings on all your local domains!
 
 ## Quick Start
 
-### 1. Configure (Optional)
+### Option A: Interactive Setup (Recommended)
+
 ```bash
-# Copy example config and customize patterns
-cp .env.example .env
-# Edit .env to match your domain patterns
+make setup-interactive
 ```
 
-### 2. Setup DNS Server on Mac
+The wizard will:
+- 🔍 Auto-detect domains from your `/etc/hosts`
+- 💡 Suggest optimal patterns
+- ❓ Ask simple yes/no questions
+- ✨ Configure everything automatically
+
+### Option B: Manual Configuration
+
 ```bash
+# 1. Copy example config and customize
+cp .env.example .env
+# Edit .env to match your domain patterns
+
+# 2. Run setup
 make setup
 ```
 
@@ -184,14 +200,15 @@ open http://yourapp.local.dev
 ## Make Commands Reference
 
 ```bash
-make setup         # Full installation
-make cleanup       # Remove configuration
-make status        # Show service status
-make test          # Test DNS resolution
-make restart-dns   # Restart dnsmasq
-make config        # Show current config
-make share-cert    # Open certs folder
-make help          # Show all commands
+make setup-interactive  # Interactive wizard (recommended)
+make setup             # Non-interactive installation
+make cleanup           # Remove configuration
+make status            # Show service status
+make test              # Test DNS resolution
+make restart-dns       # Restart dnsmasq
+make config            # Show current config
+make share-cert        # Open certs folder
+make help              # Show all commands
 ```
 
 ## Benefits vs LAN-only Setup

@@ -177,6 +177,11 @@ else
     print_info "dnsmasq is already installed"
 fi
 
+# Create project config directory
+CONFIG_DIR="$SCRIPT_DIR/config"
+mkdir -p "$CONFIG_DIR"
+print_success "Created config directory: $CONFIG_DIR"
+
 # Backup existing configuration
 BACKUP_DIR="$HOME/proxy-certs/backups/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR"
@@ -196,21 +201,32 @@ if grep -q "# Tailscale DNS Configuration" /opt/homebrew/etc/dnsmasq.conf 2>/dev
     sed -i '' '/# Tailscale DNS Configuration/,/# End Tailscale Configuration/d' /opt/homebrew/etc/dnsmasq.conf
 fi
 
-# Add Tailscale configuration
+# Add Tailscale configuration that points to project folder
 cat >> /opt/homebrew/etc/dnsmasq.conf << EOF
 
 # Tailscale DNS Configuration
 # Added on $(date)
 # This configuration makes your Mac a DNS server for your Tailscale network
+# Project location: $CONFIG_DIR
 
 # Listen on all necessary interfaces
 listen-address=$LOCAL_IPS
 
-# Use Tailscale-specific hosts file
+# Use Tailscale-specific hosts file (check if exists to prevent dnsmasq crash)
 no-hosts  # Don't read /etc/hosts directly
-addn-hosts=/opt/homebrew/etc/dnsmasq-tailscale-hosts
+conf-file=$CONFIG_DIR/dnsmasq-tailscale.conf
 
-# Keep local development domains from being forwarded upstream
+# End Tailscale Configuration
+EOF
+
+# Create project-specific dnsmasq config with safety checks
+cat > "$CONFIG_DIR/dnsmasq-tailscale.conf" << EOF
+# Tailscale DNS Configuration
+# Generated on $(date)
+# Safe to delete - dnsmasq will continue working without this file
+
+# Only load hosts file if it exists
+addn-hosts=$CONFIG_DIR/hosts
 
 # For all other queries, forward to upstream DNS
 server=1.1.1.1
@@ -221,30 +237,29 @@ cache-size=1000
 
 # Log queries (uncomment for debugging)
 # log-queries
-# log-facility=/opt/homebrew/var/log/dnsmasq.log
-
-# End Tailscale Configuration
+# log-facility=$CONFIG_DIR/dnsmasq.log
 EOF
 
 print_success "dnsmasq configured"
-
-# Create combined hosts file that merges /etc/hosts with Tailscale IPs
-print_info "Creating combined hosts file..."
 
 # Create tailscale-specific hosts file
 print_info "Creating Tailscale hosts file..."
 
 # Generate hosts file with Tailscale IP for all local domains matching patterns
-grep -E "$HOST_IP_PATTERN" /etc/hosts | grep -E "$DOMAIN_PATTERN" | awk -v ip="$TAILSCALE_IP" '{$1=ip; print}' > /opt/homebrew/etc/dnsmasq-tailscale-hosts
+grep -E "$HOST_IP_PATTERN" /etc/hosts | grep -E "$DOMAIN_PATTERN" | awk -v ip="$TAILSCALE_IP" '{$1=ip; print}' > "$CONFIG_DIR/hosts"
 
-# Create simple update script
-cat > /opt/homebrew/etc/update-dnsmasq-hosts.sh << EOF
+print_success "Generated hosts file with $(wc -l < "$CONFIG_DIR/hosts" | xargs) entries"
+
+# Create update script in project folder
+cat > "$CONFIG_DIR/update-hosts.sh" << EOF
 #!/bin/bash
 # This script updates dnsmasq hosts file with current Tailscale IP
+# Project location: $CONFIG_DIR
 
 # Load configuration
 DOMAIN_PATTERN="${DOMAIN_PATTERN}"
 HOST_IP_PATTERN="${HOST_IP_PATTERN}"
+CONFIG_DIR="$CONFIG_DIR"
 
 TAILSCALE_IP=\$(${TAILSCALE_CMD} ip -4 2>/dev/null | head -1)
 
@@ -254,11 +269,12 @@ if [ -z "\$TAILSCALE_IP" ]; then
 fi
 
 # Generate hosts file with current Tailscale IP matching configured patterns
-grep -E "\$HOST_IP_PATTERN" /etc/hosts | grep -E "\$DOMAIN_PATTERN" | awk -v ip="\$TAILSCALE_IP" '{\$1=ip; print}' > /opt/homebrew/etc/dnsmasq-tailscale-hosts
+grep -E "\$HOST_IP_PATTERN" /etc/hosts | grep -E "\$DOMAIN_PATTERN" | awk -v ip="\$TAILSCALE_IP" '{\$1=ip; print}' > "\$CONFIG_DIR/hosts"
 
 echo "Updated dnsmasq hosts with Tailscale IP: \$TAILSCALE_IP"
 echo "Domain pattern: \$DOMAIN_PATTERN"
 echo "Host IP pattern: \$HOST_IP_PATTERN"
+echo "Entries: \$(wc -l < "\$CONFIG_DIR/hosts" | xargs)"
 
 # Restart dnsmasq if it's running
 if pgrep dnsmasq > /dev/null; then
@@ -266,11 +282,9 @@ if pgrep dnsmasq > /dev/null; then
 fi
 EOF
 
-chmod +x /opt/homebrew/etc/update-dnsmasq-hosts.sh
+chmod +x "$CONFIG_DIR/update-hosts.sh"
 
-# Run the update script
-print_info "Generating combined hosts file..."
-/opt/homebrew/etc/update-dnsmasq-hosts.sh
+print_success "Created update script: $CONFIG_DIR/update-hosts.sh"
 
 # Set up automatic updates when /etc/hosts changes
 print_info "Setting up automatic hosts file updates..."
@@ -285,7 +299,7 @@ cat > ~/Library/LaunchAgents/com.localdev.dnsmasq-hosts-updater.plist << EOF
     <string>com.localdev.dnsmasq-hosts-updater</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/homebrew/etc/update-dnsmasq-hosts.sh</string>
+        <string>$CONFIG_DIR/update-hosts.sh</string>
     </array>
     <key>WatchPaths</key>
     <array>
@@ -294,9 +308,9 @@ cat > ~/Library/LaunchAgents/com.localdev.dnsmasq-hosts-updater.plist << EOF
     <key>RunAtLoad</key>
     <true/>
     <key>StandardErrorPath</key>
-    <string>/tmp/dnsmasq-updater.err</string>
+    <string>$CONFIG_DIR/updater.err</string>
     <key>StandardOutPath</key>
-    <string>/tmp/dnsmasq-updater.out</string>
+    <string>$CONFIG_DIR/updater.out</string>
 </dict>
 </plist>
 EOF
@@ -376,10 +390,11 @@ echo "   ${YELLOW}nslookup yourdomain.dev $TAILSCALE_IP${NC}"
 fi
 echo ""
 echo "📁 ${GREEN}Important files:${NC}"
-echo "   Config: /opt/homebrew/etc/dnsmasq.conf"
-echo "   Hosts: /opt/homebrew/etc/dnsmasq-tailscale-hosts"
-echo "   Updater: /opt/homebrew/etc/update-dnsmasq-hosts.sh"
+echo "   Project config: $CONFIG_DIR"
+echo "   Hosts file: $CONFIG_DIR/hosts"
+echo "   Update script: $CONFIG_DIR/update-hosts.sh"
 echo "   Certificates: $CERT_EXPORT_DIR"
+echo "   dnsmasq config: /opt/homebrew/etc/dnsmasq.conf"
 echo ""
 echo "🔒 ${GREEN}HTTPS Setup (One-time per device):${NC}"
 echo "   1. Transfer $CERT_EXPORT_DIR/rootCA.crt to your device"
@@ -392,7 +407,7 @@ echo "   2. Once installed, HTTPS will work without warnings!"
 echo ""
 echo "🔄 ${GREEN}Automatic updates:${NC}"
 echo "   Changes to /etc/hosts are automatically synced"
-echo "   Manual sync: /opt/homebrew/etc/update-dnsmasq-hosts.sh"
+echo "   Manual sync: $CONFIG_DIR/update-hosts.sh"
 echo ""
 
 echo "🔧 ${GREEN}Service Control:${NC}"

@@ -1,4 +1,4 @@
-.PHONY: help setup cleanup install uninstall test status restart-dns logs config share-cert
+.PHONY: help setup setup-interactive cleanup install uninstall test status restart-dns logs config share-cert
 
 # Default target
 .DEFAULT_GOAL := help
@@ -11,12 +11,16 @@ help: ## Show this help message
 	@echo "Targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 	@echo ""
+	@echo "💡 First time? Try: make setup-interactive"
 
-setup: ## Setup Tailscale DNS server (full installation)
+setup-interactive: ## Interactive setup with auto-detection (recommended for first use)
+	@bash scripts/setup-interactive.sh
+
+setup: ## Setup Tailscale DNS server (non-interactive, uses .env or defaults)
 	@echo "🚀 Setting up Tailscale DNS server..."
 	@bash scripts/setup-tailscale-dns.sh
 
-install: setup ## Alias for setup
+install: setup-interactive ## Alias for setup-interactive
 
 cleanup: ## Remove Tailscale DNS configuration (interactive)
 	@echo "🧹 Running cleanup..."

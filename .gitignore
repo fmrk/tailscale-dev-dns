@@ -3,3 +3,6 @@
 
 # Generated certificates
 certs/
+
+# Generated configuration
+config/
