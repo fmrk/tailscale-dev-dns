@@ -1,4 +1,4 @@
-.PHONY: help setup setup-interactive start cleanup install uninstall test status restart-dns logs config share-cert
+.PHONY: help setup config configure install start cleanup uninstall test status restart logs show-config share-cert
 
 # Default target
 .DEFAULT_GOAL := help
@@ -8,27 +8,34 @@ help: ## Show this help message
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""
-	@echo "Targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@echo "Main Commands:"
+	@grep -E '^(setup|config|cleanup|test|status):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 	@echo ""
-	@echo "💡 First time? Try: make setup-interactive"
+	@echo "Aliases:"
+	@grep -E '^(install|start|configure|uninstall):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "Advanced:"
+	@grep -E '^(restart|logs|show-config|share-cert):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+	@echo ""
 
-setup-interactive: ## Interactive setup with auto-detection (guided wizard)
-	@bash scripts/setup-interactive.sh
-
-setup: ## Smart setup - interactive if no .env, else uses existing config
+setup: ## Smart setup (interactive if no .env, else uses config)
 	@if [ ! -f .env ]; then \
-		echo "💡 No .env found - running interactive setup..."; \
+		echo "💡 No .env found - running interactive configuration..."; \
 		echo ""; \
-		bash scripts/setup-interactive.sh; \
+		bash scripts/configure-interactive.sh; \
 	else \
 		echo "🚀 Using existing .env configuration..."; \
 		bash scripts/setup-tailscale-dns.sh; \
 	fi
 
-install: setup ## Alias for setup (smart mode)
+config: ## Interactive configuration wizard (creates/updates .env)
+	@bash scripts/configure-interactive.sh
 
-start: setup ## Alias for setup (smart mode)
+configure: config ## Alias for config
+
+install: setup ## Alias for setup
+
+start: setup ## Alias for setup
 
 cleanup: ## Remove Tailscale DNS configuration (interactive)
 	@echo "🧹 Running cleanup..."
@@ -92,7 +99,7 @@ status: ## Show service status
 		echo "  ❌ Not generated"; \
 	fi
 
-restart-dns: ## Restart dnsmasq service
+restart: ## Restart dnsmasq service
 	@echo "🔄 Restarting dnsmasq..."
 	@sudo brew services restart dnsmasq
 	@echo "✅ dnsmasq restarted"
@@ -105,7 +112,7 @@ logs: ## Show dnsmasq logs (if logging is enabled)
 		brew services info dnsmasq; \
 	fi
 
-config: ## Show current configuration
+show-config: ## Show current configuration
 	@echo "⚙️  Configuration"
 	@echo ""
 	@if [ -f ".env" ]; then \
@@ -121,7 +128,7 @@ config: ## Show current configuration
 		echo "  CERT_EXPORT_DIR=./certs"; \
 	fi
 	@echo ""
-	@echo "To customize: cp .env.example .env"
+	@echo "To customize: make config"
 
 share-cert: ## Open certs folder for easy sharing
 	@if [ -d "./certs" ]; then \

@@ -19,20 +19,15 @@ Access your local development domains (e.g., `*.local.dev`) from any device, any
 # Smart setup (interactive first time, then uses saved config)
 make setup
 
-# Or force interactive setup
-make setup-interactive
+# Configure/reconfigure
+make config
 
 # Check status
 make status
 
-# Test DNS
-make test
-
 # Cleanup
 make cleanup
 ```
-
-**Aliases:** `make install` or `make start` (same as `make setup`)
 
 See all available commands: `make help`
 
@@ -57,23 +52,31 @@ See [.env.example](.env.example) for more details.
 ### 📜 `Makefile`
 **Easy command interface** - Simplifies setup and management.
 
-**Available commands:**
-- `make setup` - **Smart setup** (interactive first time, then uses .env)
-- `make setup-interactive` - Force interactive wizard with auto-detection
-- `make start` / `make install` - Aliases for `make setup`
-- `make cleanup` - Remove configuration (interactive)
+**Main commands:**
+- `make setup` - Smart setup (interactive first time, then uses .env)
+- `make config` - Interactive configuration wizard
+- `make cleanup` - Remove configuration
 - `make status` - Show service status
 - `make test` - Test DNS resolution
-- `make restart-dns` - Restart dnsmasq service
-- `make config` - Show current configuration
-- `make share-cert` - Open certs folder for sharing
-- `make help` - Show all available commands
+
+**Aliases:**
+- `make start` / `make install` - Same as `make setup`
+- `make configure` - Same as `make config`
+- `make uninstall` - Same as `make cleanup`
+
+**Advanced:**
+- `make restart` - Restart dnsmasq service
+- `make logs` - Show dnsmasq logs
+- `make show-config` - Show current .env settings
+- `make share-cert` - Open certs folder
+
+Run `make help` to see all commands with descriptions
 
 ### 📂 `scripts/`
 Contains the core bash scripts:
-- `setup-interactive.sh` - Interactive setup wizard with auto-detection
-- `setup-tailscale-dns.sh` - Main setup script (non-interactive)
-- `cleanup-tailscale-dns.sh` - Cleanup script with multiple removal options
+- `configure-interactive.sh` - Interactive configuration wizard
+- `setup-tailscale-dns.sh` - Main setup script
+- `cleanup-tailscale-dns.sh` - Cleanup script
 
 **What the setup does:**
 - Installs and configures Tailscale (if needed)
@@ -131,9 +134,9 @@ The wizard will:
 - ❓ Ask simple yes/no questions
 - ✨ Configure everything automatically
 
-**Force reconfiguration:**
+**Reconfigure:**
 ```bash
-make setup-interactive
+make config
 ```
 
 **Manual configuration (advanced):**
@@ -203,16 +206,19 @@ open http://yourapp.local.dev
 ## Make Commands Reference
 
 ```bash
-make setup             # Smart setup (interactive first time, then uses .env)
-make start / install   # Aliases for setup
-make setup-interactive # Force interactive wizard
-make cleanup           # Remove configuration
-make status            # Show service status
-make test              # Test DNS resolution
-make restart-dns       # Restart dnsmasq
-make config            # Show current config
-make share-cert        # Open certs folder
-make help              # Show all commands
+# Main
+make setup        # Smart setup (interactive first time, then uses .env)
+make config       # Configure/reconfigure (interactive wizard)
+make cleanup      # Remove configuration
+make status       # Show service status
+make test         # Test DNS resolution
+
+# Advanced
+make restart      # Restart dnsmasq
+make logs         # Show logs
+make show-config  # Show .env settings
+make share-cert   # Open certs folder
+make help         # Show all commands
 ```
 
 ## Benefits vs LAN-only Setup
