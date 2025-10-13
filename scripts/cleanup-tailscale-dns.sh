@@ -62,6 +62,11 @@ if [ -d "$CONFIG_DIR" ]; then
     cp -r "$CONFIG_DIR" "$BACKUP_DIR/" 2>/dev/null || true
 fi
 
+# Backup .env file
+if [ -f "$REPO_DIR/.env" ]; then
+    cp "$REPO_DIR/.env" "$BACKUP_DIR/" 2>/dev/null || true
+fi
+
 # Backup old system files (for backwards compatibility)
 if [ -f "/opt/homebrew/etc/dnsmasq-tailscale-hosts" ]; then
     cp /opt/homebrew/etc/dnsmasq-tailscale-hosts "$BACKUP_DIR/" 2>/dev/null || true
@@ -89,6 +94,19 @@ fi
 if [ -d "$CONFIG_DIR" ]; then
     rm -rf "$CONFIG_DIR"
     print_success "Removed project config folder"
+fi
+
+# Remove .env configuration file
+if [ -f "$REPO_DIR/.env" ]; then
+    print_info "Remove .env configuration? (y/n): "
+    read -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm "$REPO_DIR/.env"
+        print_success "Removed .env configuration"
+    else
+        print_info "Kept .env configuration"
+    fi
 fi
 
 # Remove old system files (backwards compatibility)
