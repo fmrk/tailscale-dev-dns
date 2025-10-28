@@ -1,4 +1,4 @@
-.PHONY: help setup config configure install start cleanup uninstall test status restart logs show-config share-cert
+.PHONY: help setup config configure install start cleanup uninstall test status dashboard restart logs show-config share-cert
 
 # Default target
 .DEFAULT_GOAL := help
@@ -9,7 +9,7 @@ help: ## Show this help message
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Main Commands:"
-	@grep -E '^(setup|config|cleanup|test|status):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^(setup|config|cleanup|test|status|dashboard):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "Aliases:"
 	@grep -E '^(install|start|configure|uninstall):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -98,6 +98,9 @@ status: ## Show service status
 	else \
 		echo "  ❌ Not generated"; \
 	fi
+
+dashboard: ## Show comprehensive system dashboard
+	@bash scripts/dashboard.sh
 
 restart: ## Restart dnsmasq service
 	@echo "🔄 Restarting dnsmasq..."
